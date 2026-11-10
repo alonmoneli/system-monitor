@@ -3,6 +3,8 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <chrono>
+#include <thread>
 
 struct MemoryStats {
     long long totalKb = -1;
@@ -46,18 +48,28 @@ bool readMemoryStats(MemoryStats& stats) {
 }
 
 int main() {
-    MemoryStats stats;
-    if (!readMemoryStats(stats)) {
-        std::cerr << "Failed to read valid memory statistics\n";
-        return 1;
+    constexpr int sampleCount = 5;
+
+    std::cout << std::fixed << std::setprecision(2);
+
+    for (int sample = 0; sample < sampleCount; ++sample) {
+        MemoryStats stats;
+
+        if (!readMemoryStats(stats)) {
+            std::cerr << "Failed to read valid memory statistics\n";
+            return 1;
+        }
+
+        double usagePercent =
+            100.0 * (stats.totalKb - stats.availableKb) / stats.totalKb;
+
+        std::cout << "Sample " << sample + 1
+                  << " | Memory usage: " << usagePercent << "%\n";
+
+        if (sample + 1 < sampleCount) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
-
-    double usagePercent = 100.0 * (stats.totalKb - stats.availableKb) / stats.totalKb;
-
-    std::cout << "Total: " << stats.totalKb << " kB\n";
-    std::cout << "Available: " << stats.availableKb << " kB\n";
-    std::cout << std::fixed << std::setprecision(2)
-              << "Memory usage: " << usagePercent << "%\n";
 
     return 0;
 }
