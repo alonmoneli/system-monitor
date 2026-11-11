@@ -4,6 +4,7 @@ project(SystemMonitor LANGUAGES CXX)
 add_executable(system_monitor
     src/main.cpp
     src/memory_stats.cpp
+    src/cpu_stats.cpp
 )
 
 set_target_properties(system_monitor PROPERTIES
