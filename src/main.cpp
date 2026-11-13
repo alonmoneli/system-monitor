@@ -8,6 +8,11 @@
 
 int main() {
     constexpr int sampleCount = 5;
+    constexpr double cpuThreshold = 80.0;
+    constexpr int samplesToAlert = 3;
+    
+    int consecutiveHigh = 0;
+    bool alertActive = false;
 
     CpuStats previousCpu;
     if (!readCpuStats(previousCpu)) {
@@ -52,9 +57,23 @@ int main() {
         const double memoryUsage =
             100.0 * (memory.totalKb - memory.availableKb) / memory.totalKb;
 
-        std::cout << "Sample " << sample
-                  << " | CPU: " << cpuUsage << "%"
-                  << " | Memory: " << memoryUsage << "%\n";
+        std::cout << "Sample " << sample << " | CPU: " << cpuUsage << "%" 
+        << " | Memory: " << memoryUsage << "%\n";
+
+        if (cpuUsage >= cpuThreshold) {
+            ++consecutiveHigh;
+            if (consecutiveHigh == samplesToAlert) {
+                alertActive = true;
+                std::cout << "ALERT: sustained high CPU usage\n";
+            }
+        } 
+        else {
+            consecutiveHigh = 0;
+            if (alertActive) {
+                alertActive = false;
+                std::cout << "RECOVERED: CPU usage is below the threshold\n";
+            }
+        }
     }
 
     return 0;
