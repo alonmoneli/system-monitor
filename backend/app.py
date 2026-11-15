@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from typing import Literal
 from pydantic import BaseModel, Field
+import psycopg
 
 app = FastAPI()
 
@@ -14,4 +15,15 @@ class CpuEvent(BaseModel):
 
 @app.post("/events")
 def receive_event(event: CpuEvent):
-    return {"received": True, "event": event}
+    with psycopg.connect("dbname=system_monitor") as conn:
+        cursor = conn.execute(
+            """
+            INSERT INTO cpu_events (kind, cpu_percent)
+            VALUES (%s, %s)
+            RETURNING id
+            """,
+            (event.kind, event.cpu_percent),
+        )
+        event_id = cursor.fetchone()[0]
+
+    return {"received": True, "id": event_id, "event": event}  
