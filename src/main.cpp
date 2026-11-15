@@ -1,10 +1,47 @@
 #include "cpu_stats.h"
 #include "memory_stats.h"
+#include <curl/curl.h>
+#include <string>
 
 #include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <thread>
+
+void sendCpuEvent(const char* kind, double cpuPercent) {
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        std::cerr << "Could not initialize HTTP client\n";
+        return;
+    }
+
+    curl_slist* headers = curl_slist_append(nullptr, "Content-Type: application/json");
+    if (!headers) {
+        std::cerr << "Could not create HTTP headers\n";
+        curl_easy_cleanup(curl);
+        return;
+    }
+
+    const std::string body = std::string("{\"kind\":\"") + kind +
+                             "\",\"cpu_percent\":" + std::to_string(cpuPercent) + "}";
+
+    curl_easy_setopt(curl, CURLOPT_URL, "http://127.0.0.1:8000/events");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, 1000L);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    const CURLcode result = curl_easy_perform(curl);
+
+    if (result != CURLE_OK) {
+        std::cerr << "Could not send CPU event: " << curl_easy_strerror(result) << '\n';
+    } else {
+        std::cout << '\n';
+    }
+
+    curl_easy_cleanup(curl);
+    curl_slist_free_all(headers);
+}
 
 int main() {
     constexpr int sampleCount = 5;
@@ -46,6 +83,7 @@ int main() {
         }
 
         const double cpuUsage = 100.0 * (totalDelta - idleDelta) / totalDelta;
+        //const double cpuUsage = (sample <= 3) ? 85.0 : 20.0; - for testing.
         previousCpu = currentCpu;
 
         MemoryStats memory;
@@ -65,6 +103,7 @@ int main() {
             if (consecutiveHigh == samplesToAlert) {
                 alertActive = true;
                 std::cout << "ALERT: sustained high CPU usage\n";
+                sendCpuEvent("alert", cpuUsage);
             }
         } 
         else {
@@ -72,6 +111,7 @@ int main() {
             if (alertActive) {
                 alertActive = false;
                 std::cout << "RECOVERED: CPU usage is below the threshold\n";
+                sendCpuEvent("recovered", cpuUsage);
             }
         }
     }
