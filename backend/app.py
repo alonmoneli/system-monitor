@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from typing import Literal
 from pydantic import BaseModel, Field
 import psycopg
+from psycopg.rows import dict_row
 
 app = FastAPI()
 
@@ -12,6 +13,19 @@ def health():
 class CpuEvent(BaseModel):
     kind: Literal["alert", "recovered"]
     cpu_percent: float = Field(ge=0, le=100)
+
+@app.get("/events")
+def list_events():
+    with psycopg.connect("dbname=system_monitor", row_factory=dict_row) as conn:
+        cursor = conn.execute(
+            """
+            SELECT id, received_at, kind, cpu_percent
+            FROM cpu_events
+            ORDER BY id DESC
+            LIMIT 20
+            """
+        )
+        return cursor.fetchall()
 
 @app.post("/events")
 def receive_event(event: CpuEvent):
