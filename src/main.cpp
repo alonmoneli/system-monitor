@@ -1,5 +1,7 @@
 #include "cpu_stats.h"
 #include "memory_stats.h"
+#include "cpu_alert_rule.h"
+
 #include <curl/curl.h>
 #include <string>
 
@@ -45,19 +47,15 @@ void sendCpuEvent(const char* kind, double cpuPercent) {
 
 int main() {
     constexpr int sampleCount = 5;
-    constexpr double cpuThreshold = 80.0;
-    constexpr int samplesToAlert = 3;
-    
-    int consecutiveHigh = 0;
-    bool alertActive = false;
-
     CpuStats previousCpu;
+    
     if (!readCpuStats(previousCpu)) {
         std::cerr << "Failed to read initial CPU statistics\n";
         return 1;
     }
 
     std::cout << std::fixed << std::setprecision(2);
+    CpuAlertRule alertRule;
 
     for (int sample = 1; sample <= sampleCount; ++sample) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -98,23 +96,16 @@ int main() {
         std::cout << "Sample " << sample << " | CPU: " << cpuUsage << "%" 
         << " | Memory: " << memoryUsage << "%\n";
 
-        if (cpuUsage >= cpuThreshold) {
-            ++consecutiveHigh;
-            if (consecutiveHigh == samplesToAlert) {
-                alertActive = true;
-                std::cout << "ALERT: sustained high CPU usage\n";
-                sendCpuEvent("alert", cpuUsage);
-            }
+        const auto event = alertRule.update(cpuUsage);
+
+        if (event == CpuEventKind::Alert) {
+            std::cout << "ALERT: sustained high CPU usage\n";
+            sendCpuEvent("alert", cpuUsage);
         } 
-        else {
-            consecutiveHigh = 0;
-            if (alertActive) {
-                alertActive = false;
-                std::cout << "RECOVERED: CPU usage is below the threshold\n";
-                sendCpuEvent("recovered", cpuUsage);
-            }
+        else if (event == CpuEventKind::Recovered) {
+            std::cout << "RECOVERED: CPU usage is below the threshold\n";
+            sendCpuEvent("recovered", cpuUsage);
         }
     }
-
     return 0;
 }
