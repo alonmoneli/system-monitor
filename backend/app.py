@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from typing import Literal
 from pydantic import BaseModel, Field
+
+import os
 import psycopg
 from psycopg.rows import dict_row
 
@@ -16,7 +18,7 @@ class CpuEvent(BaseModel):
 
 @app.get("/events")
 def list_events():
-    with psycopg.connect("dbname=system_monitor", row_factory=dict_row) as conn:
+    with psycopg.connect(os.getenv("MONITOR_DB", "dbname=system_monitor"), row_factory=dict_row) as conn:
         cursor = conn.execute(
             """
             SELECT id, received_at, kind, cpu_percent
@@ -29,7 +31,7 @@ def list_events():
 
 @app.post("/events")
 def receive_event(event: CpuEvent):
-    with psycopg.connect("dbname=system_monitor") as conn:
+    with psycopg.connect(os.getenv("MONITOR_DB", "dbname=system_monitor")) as conn:
         cursor = conn.execute(
             """
             INSERT INTO cpu_events (kind, cpu_percent)
