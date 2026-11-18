@@ -37,6 +37,30 @@ source .venv/bin/activate
 python -m pip install -r backend/requirements.txt
 ```
 
+## Run with Docker Compose
+
+From the repository root, with Docker running:
+
+```bash
+docker compose up --build -d
+docker compose ps
+curl -fsS http://127.0.0.1:8000/events
+```
+
+Compose starts FastAPI and PostgreSQL. The C++ collector runs directly in Linux
+or Ubuntu under WSL2. Install a C++20 compiler, CMake 3.20 or later, and the
+libcurl development package (`libcurl4-openssl-dev` on Ubuntu), then build and run it:
+
+```bash
+cmake -S . -B build
+cmake --build build
+./build/system_monitor
+```
+
+On a fresh setup, `GET /events` returns `[]` until an event is stored. Stop
+both services with `docker compose down`. The named PostgreSQL volume keeps
+your events for the next start.
+
 ### 2. Initialize PostgreSQL
 
 Start PostgreSQL, then create the project database and apply the schema. On a fresh installation, run all four commands. If a PostgreSQL role with your Ubuntu username already exists, skip the `createuser` command.
