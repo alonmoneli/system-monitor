@@ -16,27 +16,6 @@ Each sample appears in the terminal. The collector uses libcurl to send an event
 
 A reading below 80% resets the consecutive-sample count. A quiet run can finish with five readings and zero events. Each stored event includes its ID, receipt timestamp, kind, and triggering CPU percentage.
 
-## Build and run
-
-These instructions target Ubuntu 24.04, including Ubuntu under WSL2. The C++ build requires a C++20 compiler, CMake 3.20 or later, and libcurl. The backend requires Python and a running PostgreSQL server.
-
-### 1. Install dependencies and build
-
-```bash
-sudo apt update
-sudo apt install git build-essential cmake libcurl4-openssl-dev python3-venv postgresql postgresql-client curl
-
-git clone https://github.com/alonmoneli/system-monitor.git
-cd system-monitor
-
-cmake -S . -B build
-cmake --build build
-
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r backend/requirements.txt
-```
-
 ## Run with Docker Compose
 
 From the repository root, with Docker running:
@@ -60,6 +39,29 @@ cmake --build build
 On a fresh setup, `GET /events` returns `[]` until an event is stored. Stop
 both services with `docker compose down`. The named PostgreSQL volume keeps
 your events for the next start.
+
+## Run without Docker
+
+These instructions target Ubuntu 24.04, including Ubuntu under WSL2. The C++ build requires a C++20 compiler, CMake 3.20 or later, and libcurl. The backend requires Python and a running PostgreSQL server.
+
+For this setup, run `docker compose down` first if the Compose services are running, so port `8000` is available.
+
+### 1. Install dependencies and build
+
+```bash
+sudo apt update
+sudo apt install git build-essential cmake libcurl4-openssl-dev python3-venv postgresql postgresql-client curl
+
+git clone https://github.com/alonmoneli/system-monitor.git
+cd system-monitor
+
+cmake -S . -B build
+cmake --build build
+
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r backend/requirements.txt
+```
 
 ### 2. Initialize PostgreSQL
 
