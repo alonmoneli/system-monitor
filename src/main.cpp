@@ -9,6 +9,8 @@
 #include <iomanip>
 #include <iostream>
 #include <thread>
+#include <fstream>
+#include <string_view>
 
 void sendCpuEvent(const char* kind, double cpuPercent) {
     CURL* curl = curl_easy_init();
@@ -45,8 +47,25 @@ void sendCpuEvent(const char* kind, double cpuPercent) {
     curl_slist_free_all(headers);
 }
 
-int main() {
-    constexpr int sampleCount = 5;
+int main(int argc, char* argv[]) {
+    const bool recordCsv = argc == 3 && std::string_view(argv[1]) == "--csv";
+
+    if (argc != 1 && !recordCsv) {
+        std::cerr << "Usage: system_monitor [--csv output.csv]\n";
+        return 1;
+    }
+
+    std::ofstream csv;
+    if (recordCsv) {
+        csv.open(argv[2]);
+        if (!csv) {
+            std::cerr << "Could not open CSV file: " << argv[2] << '\n';
+            return 1;
+        }
+        csv << "sample,cpu_percent,memory_percent\n";
+    }
+
+    const int sampleCount = recordCsv ? 60 : 5;
     CpuStats previousCpu;
     
     if (!readCpuStats(previousCpu)) {
@@ -95,6 +114,14 @@ int main() {
 
         std::cout << "Sample " << sample << " | CPU: " << cpuUsage << "%" 
         << " | Memory: " << memoryUsage << "%\n";
+
+        if (recordCsv) {
+            csv << sample << ',' << cpuUsage << ',' << memoryUsage << '\n';
+            if (!csv) {
+                std::cerr << "Could not write CPU and memory sample\n";
+                return 1;
+            }
+        }
 
         const auto event = alertRule.update(cpuUsage);
 
